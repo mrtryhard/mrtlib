@@ -6,8 +6,8 @@
 int main() {
     bool success = mrt::tests::bounded::execute();
 
-	std::cout << "Test result: " << success << std::endl;
-	mrt::system::pause();
+    std::cout << "Test result: " << success << std::endl;
+    mrt::system::pause();
 
     return 0;
 }
