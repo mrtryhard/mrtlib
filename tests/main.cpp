@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "tests/types/bounded.hpp"
-#include "system/sysutil.hpp"
+#include "../system/sysutil.hpp"
+#include "types/bounded.hpp"
 
 int main() {
     bool success = mrt::tests::bounded::execute();
