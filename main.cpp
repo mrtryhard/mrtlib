@@ -1,12 +1,13 @@
 #include <iostream>
 
-#include "bounded.hpp"
-
-using namespace mrt::types::bounded;
+#include "tests/types/bounded.hpp"
+#include "system/sysutil.hpp"
 
 int main() {
-    bounded_range<unsigned char, 1, 100> scale{ 20 };
+    bool success = mrt::tests::bounded::execute();
 
+	std::cout << "Test result: " << success << std::endl;
+	mrt::system::pause();
 
     return 0;
 }
