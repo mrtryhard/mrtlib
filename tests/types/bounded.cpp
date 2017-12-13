@@ -51,6 +51,22 @@ namespace {
 
         return true;
     }
+
+    bool test_has_operator_plus() {
+        using mrt::types::bounded::option;
+
+        bounded_range<int, 0, 100, option::basic_arithmetic> test(40);
+        auto resultat = test + 10;
+        return resultat.value() == 50;
+    }
+
+    bool test_has_operator_minus() {
+        using mrt::types::bounded::option;
+
+        bounded_range<int, 0, 100, option::basic_arithmetic> test(40);
+        auto resultat = test - 10;
+        return resultat.value() == 30;
+    }
 }
 
 namespace mrt { namespace tests { namespace bounded {
@@ -60,7 +76,8 @@ namespace mrt { namespace tests { namespace bounded {
         success = success & test_bounded_range_equal();
         success = success & test_bounded_range_lower();
         success = success & test_bounded_range_upper();
-    
+        success = success & test_has_operator_plus();
+
         return success;
     }
 
