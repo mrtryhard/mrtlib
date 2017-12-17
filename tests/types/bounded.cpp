@@ -53,19 +53,33 @@ namespace {
     }
 
     bool test_has_operator_plus() {
-        using mrt::types::bounded::option;
-
-        bounded_range<int, 0, 100, option::basic_arithmetic> test(40);
+        bounded_range<int, 0, 100> test(40);
         auto resultat = test + 10;
         return resultat.value() == 50;
     }
 
     bool test_has_operator_minus() {
-        using mrt::types::bounded::option;
-
-        bounded_range<int, 0, 100, option::basic_arithmetic> test(40);
+        bounded_range<int, 0, 100> test(40);
         auto resultat = test - 10;
         return resultat.value() == 30;
+    }
+
+    bool test_has_operator_divide() {
+        bounded_range<int, 0, 100> test(40);
+        auto resultat = test / 10;
+        return resultat.value() == 4;        
+    }
+
+    bool test_has_operator_multiply() {
+        bounded_range<int, 0, 100> test(5);
+        auto resultat = test * 4;
+        return resultat.value() == 20;          
+    }
+
+    bool test_has_operator_modulo() {
+        bounded_range<int, 0, 100> test(5);
+        auto resultat = test % 4;
+        return resultat.value() == 1;          
     }
 }
 
@@ -77,6 +91,10 @@ namespace mrt { namespace tests { namespace bounded {
         success = success & test_bounded_range_lower();
         success = success & test_bounded_range_upper();
         success = success & test_has_operator_plus();
+        success = success & test_has_operator_minus();
+        success = success & test_has_operator_divide();
+        success = success & test_has_operator_multiply();
+        success = success & test_has_operator_modulo();
 
         return success;
     }
