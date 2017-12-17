@@ -4,7 +4,6 @@
 #include <istream>
 #include <ostream>
 #include <stdexcept>
-#include <type_traits>
 
 namespace mrt { namespace types { namespace bounded {
     template <typename t_bounded, typename t_constraint> class bounded;
