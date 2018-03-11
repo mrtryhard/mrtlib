@@ -31,7 +31,7 @@ namespace mrt { namespace types { namespace bounded {
     
         bounded() = default;
     
-        bounded(t_bounded&& value) {
+        explicit bounded(t_bounded&& value) {
             assign(std::move(value));
         }
     
