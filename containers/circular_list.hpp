@@ -7,6 +7,27 @@
 #include <iterator>
 
 namespace mrt { namespace containers {
+
+    namespace  {
+        template<typename T, typename size_type = std::size_t>
+        T* next(T* buffer,  size_type max_size, T* position) noexcept {
+	        if (position == buffer + max_size) {
+                return buffer;
+            } else {
+                return position + 1;
+            }
+        }
+
+        template<typename T, typename size_type = std::size_t>
+        T* previous(T* buffer,  size_type max_size, T* position) noexcept {
+            if (position == buffer) {
+                return buffer + max_size;
+            } else {
+                return position - 1;
+            }
+        }
+    }
+
     template<typename U>
     class circular_iterator {
     public:
@@ -16,44 +37,112 @@ namespace mrt { namespace containers {
         using reference = U&;
         using const_reference = const U&;
         using iterator_category = std::random_access_iterator_tag;
-        using size_type = const std::size_t;
+        using size_type = std::size_t;
+        using difference_type = int;
+        using my_it = circular_iterator<value_type>;
+
+    public:
+        using _Unchecked_type = circular_iterator<U>; // msvc C4996.
 
     private:
         pointer value;
         pointer base;
         size_type max_size;
 
-    private:
-        pointer next(pointer position) const noexcept {
-	        return (base + ((position - base + 1) % (max_size + 1))); 
-        }
-
-        pointer previous(pointer position) const noexcept {
-            return (base + ((position - base - 1) % (max_size + 1)));
-        }
-
     public:
-        circular_iterator() = default;
+        circular_iterator() = delete;
         explicit circular_iterator(pointer val, pointer buffer, size_type max_size) : value{val}, base{buffer}, max_size{max_size} {}
-        value_type operator*() const noexcept { return *value; }
-        bool operator==(const circular_iterator<value_type>& other) { return value == other.value; }
-        bool operator!=(const circular_iterator<value_type>& other) { return !(*this == other); }
-            
-        circular_iterator<value_type> operator++(int) {
-            return circular_iterator<value_type>{ next(value), base, max_size };
+        circular_iterator(const circular_iterator<value_type>& other) : value{other.value}, base{other.base}, max_size{other.max_size} {}
+        
+        my_it& operator=(const my_it& other) {
+            value = other.value;
+            base = other.base;
+            max_size = other.max_size;
+            return *this;
         }
 
-        circular_iterator<value_type> operator++() {
+        reference operator*() noexcept { return *value; }
+        const_reference operator*() const noexcept { return *value; }
+        bool operator==(const my_it& other) { return value == other.value; }
+        bool operator!=(const my_it& other) { return !(*this == other); }
+        
+        my_it& operator+=(int n) noexcept {
+            if (n >= 0) {
+                while(n--) value = previous(base, max_size, value);    
+            } else {
+                while(n++) value = next(base, max_size, value);
+            }
+
+            return *this;
+        }
+
+        my_it operator+(int n) const noexcept {
+            pointer tmp = value;
+
+            if (n >= 0) {
+                while(n--) tmp = previous(base, max_size, tmp);    
+            } else {
+                while(n++) tmp = next(base, max_size, tmp);
+            }
+
+            return my_it{ tmp, base, max_size };
+        }
+
+        my_it operator-(int n) const noexcept {
+            return operator+(-n);
+        }
+
+        difference_type operator-(my_it n) const noexcept {
+            if (value >= n.value) {
+                return value - n.value;
+            } else {
+                return (value + (max_size + 1) - n.value);
+            }
+        }
+
+        my_it& operator-=(int n) noexcept {
+            return operator+=(-n);
+        }
+
+        my_it& operator++(int) {
+            value = previous(base, max_size, value);
+            return *this;
+        }
+
+        my_it& operator++() {
             return operator++(1);
         }
 
-        circular_iterator<value_type> operator--(int) {
-            return circular_iterator<value_type>{ previous(value), base, max_size };
+        my_it& operator--(int) {
+            value = next(base, max_size, value);
+            return *this;
         }
 
-        circular_iterator<value_type> operator--() {
+        my_it& operator--() {
             return operator--(1);
         }
+
+        reference operator[](std::size_t n) {
+            return *(operator+(n));
+        }
+
+        bool operator<(my_it b) const noexcept {
+            auto n = (b - *this);
+            return n < 0;
+        }
+
+        bool operator>(my_it b) const noexcept {
+            return b < *this;
+        }
+
+        bool operator>=(my_it b) const noexcept {
+            return !(*this < b);
+        }
+
+        bool operator<=(my_it b) const noexcept {
+            return !(*this > b);
+        }
+
     };
 
     template<typename T>
@@ -67,6 +156,8 @@ namespace mrt { namespace containers {
         using const_reference = const value_type&;
         using iterator = circular_iterator<value_type>;
         using const_iterator = const circular_iterator<value_type>;
+        using reverse_iterator = std::reverse_iterator<circular_iterator<value_type>>;
+        using const_reverse_iterator = const reverse_iterator;
 
     private:
         size_type max_size;        
@@ -87,14 +178,12 @@ namespace mrt { namespace containers {
         
         explicit circular_list(std::initializer_list<value_type> list) 
             : max_size{list.size()},
-            buffer{new value_type[max_size + 1]},
-            head{buffer},
+            buffer{new value_type[list.size() + 1]},
+            head{buffer + list.size()},
             tail{buffer}
         {
             try {
-                for (value_type element : list) {
-                    push(element);
-                }
+                std::copy(std::rbegin(list), std::rend(list), begin());
             } catch (...) {
                 delete [] buffer;
                 throw;
@@ -131,11 +220,12 @@ namespace mrt { namespace containers {
         circular_list(circular_list& other) 
             : max_size{other.max_size},
             buffer{new value_type[max_size + 1]},
-            head{buffer},
+            head{buffer + 1},
             tail{buffer}
         {
             try {
-                std::copy(other.buffer, other.buffer + other.max_size, buffer);
+                std::copy(std::rbegin(other), std::rend(other), begin());
+                head = buffer + max_size;
             } catch (...) {
                 delete [] buffer;
                 throw;
@@ -144,9 +234,11 @@ namespace mrt { namespace containers {
 
         circular_list<value_type>& operator=(circular_list<value_type>& other) {
             if (this == &other) return *this;
-            head = buffer + static_cast<int>((other.buffer - other.head));
-            tail = buffer + static_cast<int>((other.buffer - other.tail));
-            std::copy(buffer, buffer + max_size, buffer);
+
+            head = buffer + 1;
+            std::copy(std::rbegin(other), std::rend(other), begin());
+            head = buffer + static_cast<int>((other.head - other.buffer));
+            tail = buffer + static_cast<int>((other.tail - other.buffer));
 
             return *this;
         }
@@ -169,11 +261,11 @@ namespace mrt { namespace containers {
         }
 
         reference front() noexcept {
-            return *previous(head);
+            return *previous(buffer, max_size, head);
         }
 
         const_reference front() const noexcept {
-            return *previous(head);
+            return *previous(buffer, max_size, head);
         }
 
         reference back() noexcept {
@@ -185,24 +277,24 @@ namespace mrt { namespace containers {
         }
 
         void pop() {
-            tail = next(tail);
+            tail = next(buffer, max_size, tail);
         }
 
         void push(const value_type& element) {
             *head = element;
-            head = next(head);
+            head = next(buffer, max_size, head);
 
             if(head == tail) {
-		        tail = next(tail);
+		        tail = next(buffer, max_size, tail);
 	        }
         }
 
         void push(value_type&& element) {
             *head = element;
-            head = next(head);
+            head = next(buffer, max_size, head);
             
             if(head == tail) {
-		        tail = next(tail);
+		        tail = next(buffer, max_size, tail);
 	        }
         }
 
@@ -211,7 +303,7 @@ namespace mrt { namespace containers {
         }
 
         bool full() const noexcept {
-            return next(head) == tail;
+            return next(buffer, max_size, head) == tail;
         }
 
         void clear() {
@@ -228,37 +320,35 @@ namespace mrt { namespace containers {
         }
 
         iterator begin() noexcept {
-            return iterator{ previous(head), buffer, max_size };
+            return iterator{ previous(buffer, max_size, head), buffer, max_size };
+        }
+
+        reverse_iterator rbegin() noexcept {
+            return reverse_iterator{ iterator{ previous(buffer, max_size, tail), buffer, max_size } };
         }
 
         const_iterator cbegin() const noexcept {
-            return const_iterator{ previous(head), buffer, max_size };
+            return const_iterator{ previous(buffer, max_size, head), buffer, max_size };
+        }
+
+        const_reverse_iterator crbegin() const noexcept {
+            return const_reverse_iterator{ const_iterator{ previous(buffer, max_size, tail), buffer, max_size } };
         }
 
         iterator end() noexcept {
-            return iterator{ next(tail), buffer, max_size };
+            return iterator{ previous(buffer, max_size, tail), buffer, max_size };
+        }
+
+        reverse_iterator rend() noexcept {
+            return reverse_iterator{ iterator{ previous(buffer, max_size, head), buffer, max_size } };
         }
 
         const_iterator cend() const noexcept {
-            return const_iterator{ next(tail), buffer, max_size };
+            return const_iterator{ previous(buffer, max_size, tail), buffer, max_size };
         }
 
-    //public:
-        //bool operator==(const circular_list<T>& other) const  {
-        //    return size() == other.size() && std::equal(begin(), end(), other.begin());
-        //}
-        //
-        //bool operator!=(const Tableau &autre) const  {
-        //    return !(*this == autre);
-        //}
-
-    private:
-        const_pointer next(const_pointer position) const noexcept {
-	        return (buffer + ((position - buffer + 1) % (max_size + 1))); 
-        }
-
-        const_pointer previous(const_pointer position) const noexcept {
-            return (buffer + ((position - buffer - 1) % (max_size + 1)));
+        const_reverse_iterator crend() const noexcept {
+            return const_reverse_iterator{ const_iterator{ previous(buffer, max_size, head), buffer, max_size } };
         }
     };
 }}
